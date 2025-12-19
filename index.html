@@ -4,121 +4,177 @@
   <meta charset="UTF-8" />
   <title>Unicode 字型顯示檢查器</title>
 
-  <!-- LINE 風格基礎 -->
+  <!-- LINE 風格 -->
   <style>
     body {
-      margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-                   "PingFang TC", "Noto Sans TC", sans-serif;
-      background: #f5f6f7;
-      color: #222;
+        "PingFang TC", "Microsoft JhengHei", sans-serif;
+      background: #f1fef4;
+      margin: 0;
+      padding: 20px;
     }
 
-    header {
-      background: #06c755;
-      color: white;
-      padding: 24px;
+    h1 {
+      color: #06c755;
       text-align: center;
-      font-size: 22px;
-      font-weight: 600;
     }
 
-    .container {
-      max-width: 900px;
-      margin: 32px auto;
-      background: white;
+    .card {
+      background: #fff;
       border-radius: 16px;
-      padding: 32px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-    }
-
-    h2 {
-      margin-top: 0;
-      font-size: 20px;
-    }
-
-    input[type="text"] {
-      width: 100%;
-      font-size: 32px;
-      padding: 12px;
-      border-radius: 12px;
-      border: 1px solid #ccc;
-      margin-top: 12px;
+      padding: 20px;
+      max-width: 720px;
+      margin: 20px auto;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
 
     input[type="file"] {
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    button {
+      background: #06c755;
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+      padding: 10px 18px;
+      cursor: pointer;
+      font-size: 16px;
       margin-top: 12px;
     }
 
-    .preview {
-      margin-top: 16px;
+    button:hover {
+      opacity: 0.9;
     }
 
-    .preview img {
-      max-height: 120px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
+    .result {
+      margin-top: 20px;
+    }
+
+    .char-card {
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .char {
+      font-size: 32px;
+      margin-bottom: 8px;
     }
 
     .font-sample {
-      margin-top: 24px;
-      padding: 16px;
-      border-radius: 12px;
-      background: #fafafa;
-      border: 1px solid #e0e0e0;
+      font-size: 28px;
+      margin: 4px 0;
     }
 
-    .font-name {
+    .copy {
       font-size: 14px;
-      color: #666;
-    }
-
-    .char-display {
-      font-size: 48px;
-      margin-top: 8px;
+      color: #06c755;
       cursor: pointer;
     }
 
-    footer {
-      text-align: center;
+    .hint {
       font-size: 13px;
-      color: #777;
-      margin: 24px 0;
+      color: #666;
+      margin-top: 8px;
     }
   </style>
+
+  <!-- OCR：Tesseract -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 
 <body>
 
-<header>
-  Unicode 字型顯示檢查器
-</header>
+<h1>Unicode 字型顯示檢查器</h1>
 
-<div class="container">
+<div class="card">
+  <p>上傳「單一字」的截圖，系統會嘗試 OCR 並提供候選字。</p>
 
-  <h2>① 上傳字的圖片（可選）</h2>
-  <input type="file" accept="image/*" id="imageInput">
+  <input type="file" id="imageInput" accept="image/*">
+  <button onclick="runOCR()">開始辨識</button>
 
-  <div class="preview" id="imagePreview"></div>
-
-  <h2>② 輸入或貼上該字</h2>
-  <input type="text" id="charInput" maxlength="2" placeholder="請貼上一個字">
-
-  <h2>③ 在你的電腦字型中顯示（可點擊複製）</h2>
-  <div id="results"></div>
-
+  <div class="hint">
+    ⚠️ 罕字可能無法準確辨識，請人工比對。
+  </div>
 </div>
 
-<footer>
-  本工具僅顯示「使用者裝置可用字型」之呈現結果｜非 OCR 辨識
-</footer>
+<div class="card result" id="result"></div>
 
 <script>
-  const fonts = [
-    "PingFang TC",
-    "PingFang SC",
-    "Noto Sans CJK TC",
-    "Noto Serif CJK TC",
-    "HanaMinA",
-    "HanaMinB",
-    "BabelStone Han"
+const FONT_LIST = [
+  "PingFang TC",
+  "Microsoft JhengHei",
+  "Noto Serif CJK TC",
+  "Noto Sans CJK TC",
+  "HanaMinA",
+  "BabelStone Han",
+  "serif"
+];
+
+async function runOCR() {
+  const file = document.getElementById("imageInput").files[0];
+  if (!file) {
+    alert("請先上傳圖片");
+    return;
+  }
+
+  document.getElementById("result").innerHTML = "🔍 OCR 辨識中…";
+
+  const worker = await Tesseract.createWorker("chi_tra");
+  const { data } = await worker.recognize(file);
+  await worker.terminate();
+
+  // 取前 10 個可能字元（去重）
+  const chars = [...new Set(
+    data.text.replace(/\s/g, "").split("")
+  )].slice(0, 10);
+
+  if (chars.length === 0) {
+    document.getElementById("result").innerHTML =
+      "❌ 未辨識出文字，請嘗試更清晰圖片";
+    return;
+  }
+
+  renderResults(chars);
+}
+
+function renderResults(chars) {
+  const container = document.getElementById("result");
+  container.innerHTML = "<h3>可能的 Unicode 字：</h3>";
+
+  chars.forEach(ch => {
+    const code = ch.codePointAt(0).toString(16).toUpperCase();
+    const card = document.createElement("div");
+    card.className = "char-card";
+
+    let html = `
+      <div class="char">${ch}</div>
+      <div class="hint">U+${code}</div>
+    `;
+
+    FONT_LIST.forEach(font => {
+      html += `
+        <div class="font-sample" style="font-family:${font}">
+          ${font}：${ch}
+        </div>
+      `;
+    });
+
+    html += `<div class="copy" onclick="copyChar('${ch}')">📋 複製此字</div>`;
+
+    card.innerHTML = html;
+    container.appendChild(card);
+  });
+}
+
+function copyChar(ch) {
+  navigator.clipboard.writeText(ch);
+  alert("已複製：" + ch);
+}
+</script>
+
+</body>
+</html>
