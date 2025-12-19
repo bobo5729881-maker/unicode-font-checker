@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>Unicode 字型顯示測試</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont;
+      padding: 24px;
+      line-height: 1.6;
+    }
+    input {
+      font-size: 24px;
+      padding: 6px 10px;
+      width: 200px;
+    }
+    .font-box {
+      border: 1px solid #ccc;
+      padding: 12px;
+      margin: 10px 0;
+    }
+    .font-name {
+      font-size: 14px;
+      color: #666;
+    }
+    .glyph {
+      font-size: 48px;
+      margin-top: 6px;
+      user-select: all;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>輸入一個字，用多個字型顯示</h1>
+
+  <p>請輸入或貼上一個字（含罕字）：</p>
+  <input id="charInput" maxlength="2" placeholder="例如：𢚏" />
+
+  <div id="results"></div>
+
+  <script>
+    const fonts = [
+      "HanaMinA",
+      "HanaMinB",
+      "BabelStone Han",
+      "Noto Serif CJK TC",
+      "Noto Sans CJK TC",
+      "PingFang TC",
+      "Heiti TC",
+      "Microsoft JhengHei",
+      "PMingLiU",
+      "SimSun",
+      "Arial Unicode MS"
+    ];
+
+    const input = document.getElementById("charInput");
+    const results = document.getElementById("results");
+
+    input.addEventListener("input", () => {
+      const char = input.value.trim();
+      results.innerHTML = "";
+
+      if (!char) return;
+
+      fonts.forEach(font => {
+        const box = document.createElement("div");
+        box.className = "font-box";
+        box.style.fontFamily = `"${font}", sans-serif`;
+
+        const name = document.createElement("div");
+        name.className = "font-name";
+        name.textContent = font;
+
+        const glyph = document.createElement("div");
+        glyph.className = "glyph";
+        glyph.textContent = char;
+        glyph.title = "點擊即可複製";
+
+        glyph.addEventListener("click", () => {
+          navigator.clipboard.writeText(char);
+          alert(`已用「${font}」複製字元`);
+        });
+
+        box.appendChild(name);
+        box.appendChild(glyph);
+        results.appendChild(box);
+      });
+    });
+  </script>
+
+</body>
+</html>
