@@ -2,31 +2,26 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8" />
-<title>Unicode 字型顯示檢查器</title>
+<title>Unicode 字顯示檢查器</title>
 
-<!-- LINE 風格 -->
+<!-- Tesseract OCR -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
 <style>
-  :root {
-    --line-green: #06C755;
-    --bg: #f5f7f9;
-    --card: #ffffff;
-    --accent: #00a9ff;
-    --shadow: 0 6px 18px rgba(0,0,0,0.08);
-  }
-
   body {
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC",
-      "Microsoft JhengHei", "Noto Sans CJK TC", sans-serif;
-    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang TC", sans-serif;
+    background: #f1fef4;
+    color: #222;
   }
 
   header {
-    background: var(--line-green);
+    background: #06c755;
     color: white;
-    padding: 20px;
+    padding: 16px;
+    text-align: center;
     font-size: 20px;
-    font-weight: bold;
+    font-weight: 600;
   }
 
   .container {
@@ -36,175 +31,157 @@
   }
 
   .card {
-    background: var(--card);
-    border-radius: 16px;
+    background: white;
+    border-radius: 18px;
     padding: 20px;
-    box-shadow: var(--shadow);
-    margin-bottom: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
   }
 
   h2 {
     margin-top: 0;
-    color: #333;
+    color: #06c755;
   }
 
-  input[type="file"],
-  input[type="text"] {
+  input[type="file"], textarea {
     width: 100%;
     padding: 12px;
     border-radius: 12px;
-    border: 1px solid #ddd;
+    border: 1px solid #ccc;
     font-size: 16px;
   }
 
   button {
-    background: var(--line-green);
+    background: #06c755;
     color: white;
     border: none;
-    padding: 12px 18px;
-    border-radius: 14px;
+    padding: 12px 20px;
+    border-radius: 999px;
     font-size: 16px;
     cursor: pointer;
     margin-top: 12px;
   }
 
   button:hover {
-    opacity: 0.9;
+    background: #04b24a;
   }
 
-  .results {
+  .candidates {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 16px;
+    gap: 14px;
     margin-top: 16px;
   }
 
   .char-card {
-    background: #f0fff5;
     border-radius: 14px;
-    padding: 12px;
+    padding: 10px;
+    background: #f8f8f8;
     text-align: center;
     cursor: pointer;
-    box-shadow: var(--shadow);
+    transition: 0.2s;
   }
 
   .char-card:hover {
-    background: #e3ffef;
+    background: #e6fff0;
   }
 
-  .char {
-    font-size: 32px;
-    margin-bottom: 8px;
+  .glyph {
+    font-size: 36px;
+    margin-bottom: 6px;
   }
 
-  .fonts {
+  .font-a { font-family: "PingFang TC", sans-serif; }
+  .font-b { font-family: "Noto Sans CJK TC", sans-serif; }
+  .font-c { font-family: "Microsoft JhengHei", sans-serif; }
+  .font-d { font-family: "HanaMinA", serif; }
+
+  .small {
     font-size: 12px;
-    color: #555;
+    color: #666;
   }
 
-  footer {
-    text-align: center;
-    color: #888;
-    font-size: 12px;
-    margin: 20px 0;
-  }
 </style>
-
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 
 <body>
-<header>Unicode 字型顯示檢查器</header>
+<header>Unicode 字顯示檢查器</header>
 
 <div class="container">
 
-  <!-- 圖片 OCR -->
+  <!-- OCR 區 -->
   <div class="card">
-    <h2>📷 上傳字的截圖（OCR 辨識）</h2>
+    <h2>📷 上傳字的截圖（OCR）</h2>
     <input type="file" id="imageInput" accept="image/*">
     <button onclick="runOCR()">開始辨識</button>
-    <div id="ocrStatus"></div>
-    <div id="ocrResults" class="results"></div>
+    <div id="ocrStatus" class="small"></div>
   </div>
 
-  <!-- 貼字 -->
+  <!-- 貼字區 -->
   <div class="card">
-    <h2>🔤 貼上無法顯示的字</h2>
-    <input type="text" id="charInput" placeholder="例如：□ 或 𢚏">
-    <button onclick="handleCharInput()">顯示字型</button>
-    <div id="charResults" class="results"></div>
+    <h2>⌨️ 貼上無法顯示的字</h2>
+    <textarea id="manualChar" rows="2" placeholder="例如：□ 或 PUA 字"></textarea>
+    <button onclick="handleManual()">顯示</button>
+  </div>
+
+  <!-- 結果 -->
+  <div class="card">
+    <h2>🔍 候選 Unicode 字（點擊可複製）</h2>
+    <div id="results" class="candidates"></div>
   </div>
 
 </div>
 
-<footer>
-  純前端 · GitHub Pages 可用 · Unicode / 字型檢查工具
-</footer>
-
 <script>
-const fontList = [
-  "PingFang TC",
-  "Microsoft JhengHei",
-  "Noto Sans CJK TC",
-  "HanaMinA",
-  "SimSun",
-  "Arial Unicode MS",
-  "sans-serif"
-];
-
-function copyChar(c) {
-  navigator.clipboard.writeText(c);
-  alert("已複製：" + c);
+function copyChar(ch) {
+  navigator.clipboard.writeText(ch);
+  alert("已複製：" + ch);
 }
 
-function renderCandidates(chars, containerId) {
-  const container = document.getElementById(containerId);
+function renderChars(chars) {
+  const container = document.getElementById("results");
   container.innerHTML = "";
-  chars.slice(0,10).forEach(c => {
+  chars.forEach(ch => {
+    const code = "U+" + ch.codePointAt(0).toString(16).toUpperCase();
     const div = document.createElement("div");
     div.className = "char-card";
-    div.onclick = () => copyChar(c);
-
-    const charDiv = document.createElement("div");
-    charDiv.className = "char";
-    charDiv.textContent = c;
-    charDiv.style.fontFamily = fontList.join(",");
-
-    const info = document.createElement("div");
-    info.className = "fonts";
-    info.textContent = "U+" + c.codePointAt(0).toString(16).toUpperCase();
-
-    div.appendChild(charDiv);
-    div.appendChild(info);
+    div.innerHTML = `
+      <div class="glyph font-a">${ch}</div>
+      <div class="glyph font-b">${ch}</div>
+      <div class="glyph font-c">${ch}</div>
+      <div class="glyph font-d">${ch}</div>
+      <div class="small">${code}</div>
+    `;
+    div.onclick = () => copyChar(ch);
     container.appendChild(div);
   });
 }
 
-function handleCharInput() {
-  const val = document.getElementById("charInput").value;
-  if (!val) return;
-  renderCandidates([val], "charResults");
+function handleManual() {
+  const ch = document.getElementById("manualChar").value.trim();
+  if (ch) renderChars([...ch]);
 }
 
 async function runOCR() {
   const file = document.getElementById("imageInput").files[0];
   if (!file) return;
 
-  document.getElementById("ocrStatus").textContent = "OCR 辨識中…";
+  document.getElementById("ocrStatus").innerText = "OCR 辨識中…";
 
-  const result = await Tesseract.recognize(file, "chi_tra");
-  const text = result.data.text.replace(/\s/g,"");
+  const img = URL.createObjectURL(file);
+  const result = await Tesseract.recognize(img, "chi_tra", {
+    tessedit_char_whitelist: "一丁七萬丈上下不與丐丑專世丘丙業中",
+  });
 
-  document.getElementById("ocrStatus").textContent =
-    "OCR 嘗試結果：" + text;
+  let text = result.data.text.replace(/\s/g, "");
+  let chars = [...new Set([...text])].slice(0, 10);
 
-  // 產生候選（簡化示例）
-  const candidates = [];
-  for (let i = 0x4E00; i < 0x4E00 + 50; i++) {
-    candidates.push(String.fromCodePoint(i));
-  }
-  renderCandidates(candidates, "ocrResults");
+  document.getElementById("ocrStatus").innerText =
+    "辨識完成，找到 " + chars.length + " 個候選字";
+
+  renderChars(chars);
 }
 </script>
+
 </body>
 </html>
