@@ -3,1113 +3,1044 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Unicode Font Checker</title>
-
-  <!-- LINE-ish style (no build) -->
+  <title>Unicode Font Checker (OCR + 候選字 + 字型顯示)</title>
+  <meta name="description" content="上傳字的截圖，OCR 產生 10 個候選 Unicode 字，並用多種字型顯示供複製。可接 Firebase 存回饋，持續改進。" />
   <style>
     :root{
-      --line:#06C755;
-      --bg:#F6F7F9;
+      --bg1:#f6fff8;
+      --bg2:#ffffff;
+      --line:#06C755;           /* LINE 綠 */
+      --line2:#00b14f;
+      --ink:#0b1220;
+      --muted:#5b6472;
       --card:#ffffff;
-      --ink:#111827;
-      --muted:#6B7280;
-      --ring: rgba(6,199,85,.22);
-      --shadow: 0 10px 30px rgba(17,24,39,.08);
-      --shadow2: 0 6px 16px rgba(17,24,39,.08);
+      --border: rgba(17,24,39,.12);
+      --shadow: 0 10px 30px rgba(0,0,0,.08);
       --radius: 18px;
+      --radius2: 14px;
     }
-    *{ box-sizing:border-box; }
+    *{box-sizing:border-box}
     body{
       margin:0;
-      font-family: ui-sans-serif, system-ui, -apple-system, "PingFang TC", "Microsoft JhengHei", "Noto Sans CJK TC", "Noto Sans CJK SC", Arial, sans-serif;
+      font-family: ui-sans-serif, system-ui, -apple-system, "PingFang TC","Noto Sans TC","Microsoft JhengHei", "Heiti TC", Arial, sans-serif;
       color:var(--ink);
       background:
-        radial-gradient(1200px 600px at 15% -10%, rgba(6,199,85,.16), transparent 60%),
-        radial-gradient(900px 500px at 95% 10%, rgba(59,130,246,.12), transparent 55%),
-        radial-gradient(900px 600px at 20% 110%, rgba(236,72,153,.10), transparent 55%),
-        var(--bg);
+        radial-gradient(1200px 600px at 10% -10%, rgba(6,199,85,.18), transparent 60%),
+        radial-gradient(1000px 700px at 110% 10%, rgba(0,177,79,.12), transparent 55%),
+        linear-gradient(180deg, var(--bg1), #f8fbff 55%, #ffffff);
+      min-height:100vh;
     }
-    a{ color: inherit; }
-    .wrap{ max-width: 1100px; margin: 0 auto; padding: 22px 16px 60px; }
+    a{color:inherit}
+    .wrap{max-width:1100px;margin:0 auto;padding:22px}
     .topbar{
-      display:flex; align-items:center; justify-content:space-between;
-      gap:12px; margin-bottom: 16px;
+      display:flex;align-items:center;justify-content:space-between;
+      gap:14px;margin-bottom:18px;
     }
     .brand{
-      display:flex; align-items:center; gap:12px;
-      padding: 12px 14px; background: rgba(255,255,255,.7);
-      border: 1px solid rgba(17,24,39,.08);
-      border-radius: 999px;
-      box-shadow: var(--shadow2);
-      backdrop-filter: blur(10px);
+      display:flex;align-items:center;gap:12px;
     }
     .logo{
-      width:38px; height:38px; border-radius: 12px;
-      background: linear-gradient(135deg, rgba(6,199,85,1), rgba(16,185,129,1));
-      display:grid; place-items:center;
-      color:white; font-weight:900;
-      box-shadow: 0 10px 20px rgba(6,199,85,.25);
+      width:44px;height:44px;border-radius:14px;
+      background: conic-gradient(from 210deg, var(--line), #34d399, #a7f3d0, var(--line));
+      box-shadow: 0 10px 24px rgba(6,199,85,.25);
+      position:relative;
     }
-    .brand h1{ font-size: 16px; margin:0; line-height: 1.2; }
-    .brand p{ margin:0; font-size: 12px; color: var(--muted); }
+    .logo:after{
+      content:"";
+      position:absolute;inset:10px;
+      border-radius:12px;background:#fff;opacity:.92;
+    }
+    .title{line-height:1.15}
+    .title h1{margin:0;font-size:18px}
+    .title p{margin:2px 0 0;color:var(--muted);font-size:13px}
+
+    .btn{
+      appearance:none;border:0;cursor:pointer;
+      border-radius:999px;
+      padding:10px 14px;font-weight:700;
+      background: var(--ink);color:#fff;
+      transition: transform .06s ease, opacity .2s ease;
+      display:inline-flex;align-items:center;gap:8px;
+    }
+    .btn:active{transform:scale(.99)}
+    .btn.secondary{
+      background:#fff;color:var(--ink);
+      border:1px solid var(--border);
+    }
+    .btn.line{
+      background: linear-gradient(135deg, var(--line), var(--line2));
+      box-shadow: 0 10px 22px rgba(6,199,85,.22);
+    }
+    .btn.ghost{
+      background: transparent;
+      border:1px dashed rgba(6,199,85,.45);
+      color: var(--line2);
+      font-weight:800;
+    }
 
     .grid{
       display:grid;
       grid-template-columns: 1.1fr .9fr;
-      gap: 16px;
-      align-items: start;
+      gap:16px;
     }
     @media (max-width: 980px){
-      .grid{ grid-template-columns: 1fr; }
+      .grid{grid-template-columns:1fr}
     }
+
     .card{
-      background: rgba(255,255,255,.78);
-      border: 1px solid rgba(17,24,39,.08);
+      background: var(--card);
+      border:1px solid var(--border);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      padding: 16px;
-      backdrop-filter: blur(10px);
+      overflow:hidden;
     }
-    .card h2{
-      margin: 0 0 10px 0;
-      font-size: 15px;
-      display:flex; align-items:center; justify-content:space-between;
+    .card .hd{
+      padding:16px 16px 10px;
+      display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+      background:
+        linear-gradient(180deg, rgba(6,199,85,.10), transparent 70%);
+    }
+    .card .hd h2{
+      margin:0;font-size:15px;
+    }
+    .card .hd small{display:block;color:var(--muted);margin-top:4px}
+    .card .bd{padding:16px}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .sp{height:10px}
+    .pill{
+      font-size:12px;
+      padding:6px 10px;border-radius:999px;
+      background: rgba(6,199,85,.10);
+      color: var(--line2);
+      border: 1px solid rgba(6,199,85,.18);
+      font-weight:700;
+    }
+    .input{
+      width:100%;
+      padding:12px 12px;
+      border-radius:14px;
+      border:1px solid var(--border);
+      outline:none;
+      font-size:14px;
+      background:#fff;
+    }
+    .input:focus{border-color: rgba(6,199,85,.55); box-shadow:0 0 0 4px rgba(6,199,85,.12)}
+    .help{color:var(--muted);font-size:12px;line-height:1.45}
+    .hint{
+      border-left:4px solid rgba(6,199,85,.6);
+      padding:10px 12px;border-radius:12px;
+      background: rgba(6,199,85,.07);
+      color: #0b3b20;
+      font-size:12.5px;
+    }
+
+    .drop{
+      border:2px dashed rgba(6,199,85,.35);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(6,199,85,.07), rgba(255,255,255,.85));
+      padding:16px;
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+    }
+    .drop strong{display:block}
+    .drop .left{min-width:220px}
+    .preview{
+      width:160px;height:120px;border-radius:16px;
+      border:1px solid var(--border);
+      background:#fff;
+      display:flex;align-items:center;justify-content:center;
+      overflow:hidden;
+    }
+    .preview img{max-width:100%;max-height:100%;display:block}
+
+    .status{
+      padding:10px 12px;border-radius:14px;
+      border:1px solid var(--border);
+      background:#fff;
+      font-size:12.5px;color:var(--muted);
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+    }
+    .status b{color:var(--ink)}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace}
+
+    .candGrid{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap:10px;
     }
-    .pill{
-      font-size: 12px; color: #065f46;
-      background: rgba(6,199,85,.12);
-      border: 1px solid rgba(6,199,85,.24);
-      padding: 5px 10px; border-radius: 999px;
-      white-space: nowrap;
-    }
-    .muted{ color: var(--muted); font-size: 13px; line-height: 1.55; }
-
-    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    .row > *{ flex: 0 0 auto; }
-    input[type="file"]{ display:none; }
-    .btn{
-      border: 0;
-      padding: 10px 12px;
-      border-radius: 14px;
-      font-weight: 700;
-      cursor:pointer;
-      transition: transform .05s ease, box-shadow .12s ease;
-      display:inline-flex; align-items:center; gap:8px;
-      user-select:none;
-    }
-    .btn:active{ transform: translateY(1px); }
-    .btn-primary{
-      background: linear-gradient(135deg, rgba(6,199,85,1), rgba(16,185,129,1));
-      color: white;
-      box-shadow: 0 10px 22px rgba(6,199,85,.22);
-    }
-    .btn-soft{
-      background: rgba(17,24,39,.06);
-      color: var(--ink);
-      border: 1px solid rgba(17,24,39,.08);
-    }
-    .btn-warn{
-      background: linear-gradient(135deg, rgba(249,115,22,1), rgba(245,158,11,1));
-      color: white;
-      box-shadow: 0 10px 22px rgba(245,158,11,.18);
-    }
-    .btn:disabled{ opacity:.55; cursor:not-allowed; box-shadow:none; }
-
-    .preview{
-      margin-top: 12px;
-      display:grid; gap:10px;
-      grid-template-columns: 1fr;
-    }
-    .imgbox{
-      width:100%;
-      border-radius: 16px;
-      overflow:hidden;
-      border: 1px solid rgba(17,24,39,.10);
-      background: rgba(255,255,255,.65);
-      box-shadow: var(--shadow2);
-    }
-    .imgbox img{ width:100%; display:block; max-height: 360px; object-fit: contain; background: white; }
-    .mini{
-      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
-    }
-    .kbd{
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size: 12px;
-      background: rgba(17,24,39,.06);
-      padding: 4px 8px; border-radius: 10px;
-      border: 1px solid rgba(17,24,39,.08);
-    }
-    .status{
-      margin-top: 10px;
-      padding: 10px 12px;
-      border-radius: 16px;
-      border: 1px solid rgba(17,24,39,.08);
-      background: rgba(255,255,255,.7);
-    }
-    .status strong{ font-size: 13px; }
-    .status .muted{ margin-top: 2px; }
-
-    .input{
-      width: 100%;
-      padding: 12px 12px;
-      border-radius: 14px;
-      border: 1px solid rgba(17,24,39,.12);
-      outline: none;
-      background: rgba(255,255,255,.85);
-      box-shadow: 0 0 0 0 transparent;
-      transition: box-shadow .12s ease, border-color .12s ease;
-      font-size: 14px;
-    }
-    .input:focus{
-      border-color: rgba(6,199,85,.35);
-      box-shadow: 0 0 0 5px var(--ring);
-    }
-    .split{
-      display:grid;
-      grid-template-columns: 1fr;
-      gap: 12px;
-    }
-
-    .candidates{
-      margin-top: 12px;
-      display:grid;
-      grid-template-columns: repeat(2, minmax(0,1fr));
-      gap: 12px;
-    }
-    @media (max-width: 700px){
-      .candidates{ grid-template-columns: 1fr; }
+    @media (max-width: 620px){
+      .candGrid{grid-template-columns:1fr}
     }
     .cand{
-      border-radius: 18px;
-      border: 1px solid rgba(17,24,39,.08);
-      background: rgba(255,255,255,.86);
-      box-shadow: var(--shadow2);
-      padding: 12px;
-      display:grid;
-      gap: 10px;
+      border:1px solid var(--border);
+      border-radius: 16px;
+      padding:12px;
+      background: radial-gradient(600px 200px at 30% 0%, rgba(6,199,85,.10), transparent 40%), #fff;
+      display:flex;flex-direction:column;gap:10px;
     }
     .candTop{
-      display:flex; justify-content:space-between; align-items:flex-start; gap: 10px;
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
     }
     .bigChar{
-      font-size: 52px;
-      line-height: 1;
-      letter-spacing: .02em;
-      user-select:text;
-      padding: 6px 8px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, rgba(6,199,85,.10), rgba(59,130,246,.08));
-      border: 1px solid rgba(17,24,39,.06);
-      width: fit-content;
+      font-size:44px;line-height:1;
+      padding:8px 10px;border-radius:14px;
+      background: rgba(0,0,0,.03);
+      border: 1px solid var(--border);
+      min-width:72px;text-align:center;
     }
     .meta{
-      font-size: 12px;
-      color: var(--muted);
-      text-align:right;
+      flex:1;
+      min-width:0;
+    }
+    .meta .cp{font-size:12px;color:var(--muted)}
+    .meta .blk{font-size:12px;margin-top:2px}
+    .meta .blk b{font-weight:800}
+    .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    .mini{
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:#fff;
+      font-size:12px;font-weight:800;
+      cursor:pointer;
+    }
+    .mini.primary{
+      background: linear-gradient(135deg, var(--line), var(--line2));
+      border-color: transparent;
+      color:#fff;
+    }
+    .mini:active{transform:scale(.99)}
+    .fontsBox{
+      border-radius: 14px;
+      border:1px solid var(--border);
+      background:#fff;
+      overflow:hidden;
+    }
+    .fontsBox .fh{
+      padding:10px 12px;
+      display:flex;align-items:center;justify-content:space-between;
+      background: rgba(0,0,0,.02);
+      border-bottom:1px solid var(--border);
+      font-size:12px;color:var(--muted);
     }
     .fonts{
-      display:grid; gap: 8px;
+      display:flex;flex-direction:column;
     }
-    .fontLine{
-      display:flex; gap:10px; align-items:center; justify-content:space-between;
-      padding: 8px 10px;
-      border-radius: 14px;
-      border: 1px solid rgba(17,24,39,.07);
-      background: rgba(17,24,39,.03);
+    .fontRow{
+      display:flex;gap:10px;align-items:center;
+      padding:10px 12px;
+      border-bottom:1px solid rgba(17,24,39,.06);
     }
+    .fontRow:last-child{border-bottom:0}
     .fontName{
-      font-size: 12px;
-      color: rgba(17,24,39,.78);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width: 55%;
+      width:180px;max-width:46%;
+      font-size:12px;color:var(--muted);
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
     }
-    .sample{
-      font-size: 24px;
-      line-height: 1;
-      user-select:text;
-      padding: 4px 8px;
-      border-radius: 12px;
-      background: rgba(255,255,255,.65);
-      border: 1px solid rgba(17,24,39,.06);
-    }
-    .tag{
-      font-size: 11px;
-      padding: 4px 8px;
-      border-radius: 999px;
-      border: 1px solid rgba(17,24,39,.10);
-      background: rgba(255,255,255,.85);
-      color: rgba(17,24,39,.72);
-    }
-
-    .feedback{
-      margin-top: 14px;
-      padding: 12px;
-      border-radius: 18px;
-      border: 1px dashed rgba(6,199,85,.35);
+    .fontShow{
+      flex:1;
+      font-size:28px;line-height:1.1;
+      padding:8px 10px;border-radius:12px;
       background: rgba(6,199,85,.06);
-      display:grid;
-      gap: 10px;
+      border: 1px solid rgba(6,199,85,.12);
     }
-    .fbGrid{
-      display:flex;
-      gap: 10px;
-      flex-wrap: wrap;
+    .okBadge{
+      font-size:11px;font-weight:900;
+      padding:5px 8px;border-radius:999px;
+      background: rgba(6,199,85,.12);
+      border:1px solid rgba(6,199,85,.18);
+      color: var(--line2);
     }
-    .choice{
-      border: 1px solid rgba(17,24,39,.10);
-      background: rgba(255,255,255,.9);
-      border-radius: 14px;
-      padding: 8px 10px;
-      cursor:pointer;
-      display:flex; align-items:center; gap: 8px;
-      box-shadow: 0 8px 16px rgba(17,24,39,.06);
-      transition: transform .06s ease, box-shadow .12s ease;
-      user-select:none;
+    .noBadge{
+      font-size:11px;font-weight:900;
+      padding:5px 8px;border-radius:999px;
+      background: rgba(0,0,0,.04);
+      border:1px solid var(--border);
+      color: var(--muted);
     }
-    .choice:hover{ transform: translateY(-1px); box-shadow: 0 12px 22px rgba(17,24,39,.08); }
-    .choice .ch{ font-size: 22px; line-height: 1; }
-    .choice .small{ font-size: 12px; color: var(--muted); }
-
     .footer{
-      margin-top: 14px;
-      color: rgba(17,24,39,.55);
-      font-size: 12px;
-      text-align:center;
+      margin-top:16px;color:var(--muted);font-size:12px;line-height:1.5
     }
-    .toast{
-      position: fixed;
-      left: 50%;
-      bottom: 18px;
-      transform: translateX(-50%);
-      background: rgba(17,24,39,.92);
-      color: white;
-      padding: 10px 12px;
-      border-radius: 999px;
-      font-size: 13px;
-      box-shadow: 0 14px 30px rgba(0,0,0,.20);
-      opacity: 0;
-      pointer-events:none;
-      transition: opacity .18s ease, transform .18s ease;
+    .k{
+      padding:2px 7px;border-radius:8px;border:1px solid var(--border);
+      background:#fff;font-family: ui-monospace, monospace;font-size:11px;color:var(--ink)
     }
-    .toast.show{ opacity:1; transform: translateX(-50%) translateY(-4px); }
   </style>
-
-  <!-- Tesseract.js for OCR (pure front-end) -->
-  <script defer src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-
-  <!-- Firebase (compat for simple <script> usage) -->
-  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
-  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 </head>
-
 <body>
   <div class="wrap">
     <div class="topbar">
       <div class="brand">
-        <div class="logo">字</div>
-        <div>
+        <div class="logo"></div>
+        <div class="title">
           <h1>Unicode Font Checker</h1>
-          <p>圖片 OCR → 10 個候選字 → 多字型顯示 → 可複製｜回饋越用越準</p>
+          <p>圖片 OCR → 10 個候選字 → 多字型顯示 → 一鍵複製（可接 Firebase 持續改進）</p>
         </div>
       </div>
-      <div class="pill">LINE 風格 · GitHub Pages 可用</div>
+      <div class="row">
+        <button class="btn secondary" id="btnSettings">設定</button>
+        <button class="btn line" id="btnRerun" title="重新辨識（OCR）">重新辨識</button>
+      </div>
     </div>
 
     <div class="grid">
-      <!-- LEFT -->
-      <div class="card">
-        <h2>
-          <span>1) 上傳截圖 OCR 辨識</span>
-          <span class="pill">推薦：字要夠清楚、對比高</span>
-        </h2>
-
-        <div class="row">
-          <label class="btn btn-primary" for="fileInput">📷 上傳圖片</label>
-          <input id="fileInput" type="file" accept="image/*" />
-
-          <button id="btnRecognize" class="btn btn-warn" disabled>✨ 開始辨識</button>
-          <button id="btnRetry" class="btn btn-soft" disabled>🔁 重新辨識</button>
-        </div>
-
-        <div class="preview">
-          <div class="imgbox">
-            <img id="previewImg" alt="preview" src="" style="display:none" />
-          </div>
-
-          <div class="mini">
-            <span class="kbd">提示：可以先裁切到只剩一個字</span>
-            <span class="kbd">支援：chi_tra / chi_sim / jpn（會合併候選）</span>
-          </div>
-
-          <div class="status" id="statusBox">
-            <strong id="statusTitle">尚未上傳圖片</strong>
-            <div class="muted" id="statusText">上傳後按「開始辨識」，會產生 10 個不同候選字。</div>
-          </div>
-
-          <canvas id="workCanvas" style="display:none"></canvas>
-        </div>
-      </div>
-
-      <!-- RIGHT -->
-      <div class="card">
-        <h2>
-          <span>2) 手動貼上字 / 碼位（另一個入口）</span>
-          <span class="pill">貼不上也可用 U+XXXX</span>
-        </h2>
-
-        <div class="split">
+      <!-- Left: Upload + OCR -->
+      <section class="card">
+        <div class="hd">
           <div>
-            <div class="muted" style="margin-bottom:6px">貼上「你想檢查的字」（如果能貼就貼；不行就用下面的碼位輸入）</div>
-            <input id="manualChar" class="input" placeholder="例如：𢚏 或 𠮟（可直接貼）" />
+            <h2>1) 上傳字的截圖（OCR）</h2>
+            <small>建議：裁到只剩單一字、對比高、不要有太多背景</small>
           </div>
-
-          <div>
-            <div class="muted" style="margin-bottom:6px">或輸入碼位：支援 <span class="kbd">U+4E00</span> / <span class="kbd">4E00</span> / <span class="kbd">0x4E00</span></div>
-            <input id="manualCode" class="input" placeholder="例如：U+26D3F" />
-          </div>
-
-          <div class="row">
-            <button id="btnManualShow" class="btn btn-primary">✅ 顯示並產生候選卡片</button>
-            <button id="btnClear" class="btn btn-soft">🧹 清空</button>
-          </div>
-
-          <div class="status">
-            <strong>說明</strong>
-            <div class="muted">
-              這個網站會用「多種常見系統字型」展示同一個字，讓你快速判斷你這台電腦是否能顯示；
-              若你加上自己的字型（PUA 字型）也可以在這裡看效果。
+          <span class="pill">純前端 + 可選接 Firebase</span>
+        </div>
+        <div class="bd">
+          <div class="drop" id="dropZone">
+            <div class="left">
+              <strong>拖曳圖片到這裡</strong>
+              <div class="help">或按「選擇圖片」上傳（PNG/JPG/WebP）。</div>
+              <div class="sp"></div>
+              <input type="file" id="fileInput" accept="image/*" />
+              <div class="sp"></div>
+              <div class="hint">
+                OCR 成功後會自動產生 10 個「不同的候選字」。若你知道字但系統顯示不出來，也可以用右邊的「貼上字 / Unicode」。
+              </div>
+            </div>
+            <div class="preview" id="preview">
+              <span class="help">尚未上傳</span>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
 
-    <!-- RESULTS -->
-    <div class="card" style="margin-top:16px">
-      <h2>
-        <span>3) OCR 候選字（10 個不同字）＋ 多字型顯示 ＋ 可複製</span>
-        <span class="pill">點字即可複製</span>
-      </h2>
+          <div class="sp"></div>
 
-      <div id="resultsInfo" class="muted">尚無結果。上傳圖片或手動輸入後，會在這裡出現候選字卡片。</div>
-
-      <div id="candidates" class="candidates"></div>
-
-      <div id="feedbackBox" class="feedback" style="display:none">
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap">
-          <strong>🟢 請點選最接近的字（回饋後會越用越準）</strong>
-          <span class="muted">你點一次 = 資料庫累積一次（不用你手動整理）</span>
-        </div>
-        <div id="fbChoices" class="fbGrid"></div>
-
-        <div style="display:grid; gap:8px">
-          <div class="muted">如果「以上都不是」，你可以直接輸入正確字或碼位（U+XXXX）：</div>
-          <div class="row" style="width:100%">
-            <input id="fbCustom" class="input" style="flex:1 1 320px" placeholder="例如：𢚏 或 U+26D3F" />
-            <button id="btnSubmitCustom" class="btn btn-primary">📌 送出正解</button>
+          <div class="status">
+            <div>
+              狀態：<b id="statusText">等待上傳圖片</b>
+              <span class="mono" id="statusSub"></span>
+            </div>
+            <div class="row">
+              <span class="pill" id="ocrModePill">OCR：Endpoint</span>
+            </div>
           </div>
+
+          <div class="sp"></div>
+
+          <div class="card" style="box-shadow:none;border-radius:16px;">
+            <div class="hd" style="border-bottom:1px solid var(--border);">
+              <div>
+                <h2>OCR 原始輸出</h2>
+                <small>用來檢查 OCR 在猜什麼；候選字會從這裡抽取</small>
+              </div>
+              <button class="btn ghost" id="btnCopyRaw">複製文字</button>
+            </div>
+            <div class="bd">
+              <textarea id="rawText" class="input" rows="5" placeholder="OCR 結果會顯示在這裡…"></textarea>
+              <div class="help" style="margin-top:8px;">
+                若 OCR 常出錯：把圖片裁更乾淨、提高對比、避免手寫/模糊、盡量「單一字」。
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Right: Paste char / codepoint -->
+      <aside class="card">
+        <div class="hd">
+          <div>
+            <h2>2) 貼上字 / Unicode（備用）</h2>
+            <small>系統顯示不出來也沒關係：可輸入 <span class="k">U+26D3F</span> 或十六進位 <span class="k">26D3F</span></small>
+          </div>
+          <span class="pill">手動查詢</span>
+        </div>
+        <div class="bd">
+          <input id="manualInput" class="input" placeholder="貼上一個字，或輸入 U+XXXX / 26D3F" />
+          <div class="sp"></div>
+          <div class="row">
+            <button class="btn line" id="btnManual">顯示並產生候選</button>
+            <button class="btn secondary" id="btnClear">清空</button>
+          </div>
+          <div class="sp"></div>
+          <div class="help">
+            如果你只知道「部件」或「讀音」，純前端很難直接定位 Unicode；但你可以先 OCR/貼碼位，再用下面的候選字 + 多字型檢查。
+          </div>
+
+          <div class="sp"></div>
+
+          <div class="card" style="box-shadow:none;border-radius:16px;">
+            <div class="hd" style="border-bottom:1px solid var(--border);">
+              <div>
+                <h2>回饋：請點選最接近的字</h2>
+                <small>你點了之後會（可選）送到 Firebase，幫系統越來越準</small>
+              </div>
+            </div>
+            <div class="bd">
+              <div class="hint">
+                你選「最接近字」後，系統會記錄：圖片指紋（hash）、OCR 原始輸出、你選的正解。<br/>
+                未來同樣圖片或相似情況就能更快給你正確候選（資料越多越好）。
+              </div>
+              <div class="sp"></div>
+              <div class="status">
+                <div>Firebase：<b id="fbStatus">未啟用</b></div>
+                <div class="help"><span id="fbDetail">（可在「設定」中填入 Firebase config）</span></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </aside>
+    </div>
+
+    <div class="sp"></div>
+
+    <!-- Candidates -->
+    <section class="card">
+      <div class="hd">
+        <div>
+          <h2>3) 10 個候選字（每個候選字用多字型顯示）</h2>
+          <small>每一格是一個「不同的字」；點「設為正解」可回饋；點「複製」可直接貼到文件</small>
+        </div>
+        <span class="pill" id="candCountPill">候選：0</span>
+      </div>
+      <div class="bd">
+        <div id="candGrid" class="candGrid"></div>
+        <div class="footer">
+          小提醒：網頁無法列出你電腦「所有」字型（瀏覽器限制），所以我用一份「常見字型清單」做顯示測試；你也可在設定裡新增字型名稱。
         </div>
       </div>
+    </section>
 
-      <div class="footer">
-        提醒：瀏覽器無法讀取「你電腦有哪些字型」的完整清單；本站用常見字型清單展示，並允許你自行安裝字型後檢查顯示效果。
+    <div class="sp"></div>
+
+    <!-- Settings modal (simple) -->
+    <section class="card" id="settingsCard" style="display:none;">
+      <div class="hd">
+        <div>
+          <h2>設定</h2>
+          <small>HF Endpoint / 字型清單 / Firebase（可選）</small>
+        </div>
+        <button class="btn secondary" id="btnCloseSettings">關閉</button>
       </div>
-    </div>
+      <div class="bd">
+        <div class="hint" style="margin-bottom:10px;">
+          ⚠️ 安全提醒：如果你把 Hugging Face Token 放在前端，任何人都可能看到並濫用。<br/>
+          想安全：下一步把 OCR 請求改走 Firebase Functions 代理（我也可以直接給你那份程式碼）。
+        </div>
+
+        <h3 style="margin:0 0 8px;font-size:14px;">A) Hugging Face Inference Endpoint</h3>
+        <div class="row">
+          <input id="hfEndpoint" class="input" style="flex:1;min-width:260px" placeholder="Endpoint URL，例如：https://xxxxxxx.us-east-1.aws.endpoints.huggingface.cloud" />
+          <input id="hfToken" class="input" style="flex:1;min-width:220px" placeholder="HF Token（可留空：用公開端點或走代理）" />
+        </div>
+        <div class="help" style="margin-top:8px;">
+          Endpoint 測試方式請看 Hugging Face 文件：Authorization Bearer token、JSON body 依你的部署而定。 :contentReference[oaicite:0]{index=0}
+        </div>
+
+        <div class="sp"></div>
+
+        <h3 style="margin:0 0 8px;font-size:14px;">B) 常見字型清單（用來測試這台電腦能否顯示）</h3>
+        <textarea id="fontList" class="input" rows="5" placeholder="每行一個字型名稱"></textarea>
+        <div class="help" style="margin-top:8px;">
+          你可以加入你自己裝的字型（例如 HanaMinA、BabelStone Han、Noto Sans CJK 等）。
+        </div>
+
+        <div class="sp"></div>
+
+        <h3 style="margin:0 0 8px;font-size:14px;">C) Firebase（可選：存回饋資料）</h3>
+        <textarea id="fbConfig" class="input" rows="6" placeholder='貼上 Firebase config（JSON）。例：
+{
+  "apiKey": "...",
+  "authDomain": "...",
+  "projectId": "...",
+  "appId": "..."
+}'></textarea>
+        <div class="help" style="margin-top:8px;">
+          啟用後會把「圖片 hash、OCR 原文、你選的正解、時間」寫入 Firestore。Firestore 寫入方式參考： :contentReference[oaicite:1]{index=1}
+        </div>
+
+        <div class="sp"></div>
+
+        <div class="row">
+          <button class="btn line" id="btnSaveSettings">儲存設定</button>
+          <button class="btn secondary" id="btnResetSettings">重置為預設</button>
+        </div>
+      </div>
+    </section>
   </div>
 
-  <div id="toast" class="toast">已複製</div>
+  <!-- Firebase (optional) -->
+  <script type="module">
+    // ======= Utilities =======
+    const $ = (sel) => document.querySelector(sel);
+    const candGrid = $("#candGrid");
+    const statusText = $("#statusText");
+    const statusSub = $("#statusSub");
+    const rawText = $("#rawText");
+    const preview = $("#preview");
+    const candCountPill = $("#candCountPill");
+    const fbStatus = $("#fbStatus");
+    const fbDetail = $("#fbDetail");
 
-<script>
-/* ===========================
-   0) Firebase setup (YOU fill)
-   =========================== */
-const FIREBASE_ENABLED = true; // 你要先把 firebaseConfig 填好
-let db = null;
+    // Common fonts to test (user can edit in settings)
+    const DEFAULT_FONTS = [
+      "PingFang TC",
+      "Heiti TC",
+      "Songti TC",
+      "Hiragino Sans",
+      "Hiragino Mincho ProN",
+      "Noto Sans CJK TC",
+      "Noto Serif CJK TC",
+      "Noto Sans TC",
+      "Noto Serif TC",
+      "Microsoft JhengHei",
+      "PMingLiU",
+      "MingLiU",
+      "SimSun",
+      "NSimSun",
+      "SimHei",
+      "Arial Unicode MS",
+      "Segoe UI Symbol",
+      "Apple Symbols",
+      "Noto Sans Symbols 2"
+    ];
 
-const firebaseConfig = {
-  // TODO: 這裡貼上你 Firebase 專案 Web App 的設定
-  // apiKey: "...",
-  // authDomain: "...",
-  // projectId: "...",
-  // storageBucket: "...",
-  // messagingSenderId: "...",
-  // appId: "..."
-};
+    // Local state
+    let currentImageBlob = null;
+    let currentImageDataUrl = null;
+    let lastCandidates = [];
+    let lastChosen = null;
 
-function initFirebase(){
-  try{
-    if(!FIREBASE_ENABLED) return;
-    if(!firebaseConfig || !firebaseConfig.projectId){
-      console.warn("Firebase config missing. Disable FIREBASE_ENABLED or fill config.");
-      return;
-    }
-    firebase.initializeApp(firebaseConfig);
-    db = firebase.firestore();
-  }catch(e){
-    console.warn("Firebase init failed:", e);
-    db = null;
-  }
-}
+    // Settings persisted
+    const settings = loadSettings();
+    $("#hfEndpoint").value = settings.hfEndpoint || "";
+    $("#hfToken").value = settings.hfToken || "";
+    $("#fontList").value = (settings.fontList?.length ? settings.fontList : DEFAULT_FONTS).join("\n");
+    $("#fbConfig").value = settings.fbConfigRaw || "";
 
-/* ===========================
-   1) UI helpers
-   =========================== */
-const el = (id) => document.getElementById(id);
+    // ======= Firebase (optional init) =======
+    let firebaseReady = false;
+    let addFeedback = null;
 
-function toast(msg){
-  const t = el("toast");
-  t.textContent = msg;
-  t.classList.add("show");
-  setTimeout(()=>t.classList.remove("show"), 1200);
-}
-
-function setStatus(title, text){
-  el("statusTitle").textContent = title;
-  el("statusText").textContent = text;
-}
-
-function normalizeCharCandidates(text){
-  // 取出「看起來像字」的字符，去除空白/控制符
-  const arr = [];
-  for(const ch of text){
-    const code = ch.codePointAt(0);
-    if(!code) continue;
-    // 過濾空白、控制符
-    if(/\s/.test(ch)) continue;
-    if(code < 0x20) continue;
-    // 過濾常見雜訊符號（可視需要調整）
-    if(ch === "�") continue;
-    arr.push(ch);
-  }
-  return arr;
-}
-
-function uniqueCharsKeepOrder(chars){
-  const seen = new Set();
-  const out = [];
-  for(const ch of chars){
-    if(!seen.has(ch)){
-      seen.add(ch);
-      out.push(ch);
-    }
-  }
-  return out;
-}
-
-/* ===========================
-   2) Font list (practical set)
-   =========================== */
-const FONT_STACKS = [
-  { name: "系統預設", css: `system-ui, -apple-system, "PingFang TC", "Microsoft JhengHei", "Noto Sans CJK TC", "Noto Sans CJK SC", sans-serif` },
-  { name: "PingFang TC", css: `"PingFang TC", system-ui, sans-serif` },
-  { name: "PingFang SC", css: `"PingFang SC", system-ui, sans-serif` },
-  { name: "Microsoft JhengHei", css: `"Microsoft JhengHei", system-ui, sans-serif` },
-  { name: "Noto Sans CJK TC", css: `"Noto Sans CJK TC", system-ui, sans-serif` },
-  { name: "Noto Sans CJK SC", css: `"Noto Sans CJK SC", system-ui, sans-serif` },
-  { name: "Noto Serif CJK TC", css: `"Noto Serif CJK TC", serif` },
-  { name: "SimSun", css: `"SimSun", serif` },
-  { name: "PMingLiU", css: `"PMingLiU", serif` },
-  { name: "HanaMinA", css: `"HanaMinA", serif` },
-  { name: "BabelStone Han", css: `"BabelStone Han", serif` },
-  { name: "Unifont", css: `"Unifont", monospace` },
-];
-
-/* ===========================
-   3) "Can this font render this glyph?"
-   - Best-effort heuristic:
-     draw char in canvas with target font and with a fallback font,
-     compare pixel hash. Not perfect but useful.
-   =========================== */
-function canvasGlyphHash(char, fontCss){
-  const c = el("workCanvas");
-  const ctx = c.getContext("2d", { willReadFrequently: true });
-  const W = 120, H = 120;
-  c.width = W; c.height = H;
-  ctx.clearRect(0,0,W,H);
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(0,0,W,H);
-
-  ctx.fillStyle = "#000";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.font = `84px ${fontCss}`;
-  ctx.fillText(char, W/2, H/2+4);
-
-  const img = ctx.getImageData(0,0,W,H).data;
-  // simple hash: sample grid 16x16, count dark pixels pattern
-  let bits = "";
-  const gx = 16, gy = 16;
-  for(let y=0;y<gy;y++){
-    for(let x=0;x<gx;x++){
-      const px = Math.floor((x + 0.5) * W / gx);
-      const py = Math.floor((y + 0.5) * H / gy);
-      const idx = (py*W + px) * 4;
-      const r = img[idx], g = img[idx+1], b = img[idx+2];
-      const lum = (r*0.2126 + g*0.7152 + b*0.0722);
-      bits += (lum < 200) ? "1" : "0"; // dark-ish
-    }
-  }
-  // compress to hex-ish string
-  let out = "";
-  for(let i=0;i<bits.length;i+=4){
-    out += parseInt(bits.slice(i,i+4),2).toString(16);
-  }
-  return out;
-}
-
-function glyphLikelyRendered(char, fontCss){
-  // Compare against a "tofu-ish" fallback baseline.
-  const h1 = canvasGlyphHash(char, fontCss);
-  const h2 = canvasGlyphHash(char, `"Arial Unicode MS", "Segoe UI Symbol", sans-serif`); // broad fallback
-  // If identical, could still be same tofu; compare to a known tofu char's hash as well.
-  const tofu = "□";
-  const t1 = canvasGlyphHash(tofu, fontCss);
-  // Heuristic: if char hash == tofu hash, likely not rendered
-  if(h1 === t1) return false;
-  // If h1 differs from fallback, more likely rendered
-  return h1 !== h2 || h1 !== t1;
-}
-
-/* ===========================
-   4) Image preprocessing to improve OCR
-   =========================== */
-async function preprocessImageToDataURL(img){
-  const c = el("workCanvas");
-  const ctx = c.getContext("2d", { willReadFrequently: true });
-
-  // Fit to a reasonable size (OCR likes bigger)
-  const maxW = 1400;
-  const scale = Math.min(1, maxW / img.naturalWidth);
-  const W = Math.max(1, Math.floor(img.naturalWidth * scale));
-  const H = Math.max(1, Math.floor(img.naturalHeight * scale));
-  c.width = W; c.height = H;
-
-  ctx.drawImage(img, 0, 0, W, H);
-
-  // grayscale + contrast + threshold
-  const id = ctx.getImageData(0,0,W,H);
-  const d = id.data;
-
-  // Compute mean luminance
-  let sum = 0;
-  for(let i=0;i<d.length;i+=4){
-    const lum = d[i]*0.2126 + d[i+1]*0.7152 + d[i+2]*0.0722;
-    sum += lum;
-  }
-  const mean = sum / (d.length/4);
-
-  // Adaptive-ish threshold around mean
-  const thr = Math.max(80, Math.min(200, mean * 0.92));
-
-  for(let i=0;i<d.length;i+=4){
-    const lum = d[i]*0.2126 + d[i+1]*0.7152 + d[i+2]*0.0722;
-
-    // Boost contrast slightly
-    let v = (lum - mean) * 1.25 + mean;
-
-    // Threshold
-    v = (v > thr) ? 255 : 0;
-
-    d[i]=d[i+1]=d[i+2]=v;
-    d[i+3]=255;
-  }
-  ctx.putImageData(id,0,0);
-
-  return c.toDataURL("image/png");
-}
-
-/* ===========================
-   5) dHash image fingerprint for "learn over time"
-   =========================== */
-async function dhashFromImageDataURL(dataURL){
-  const img = new Image();
-  img.src = dataURL;
-  await img.decode();
-
-  const c = el("workCanvas");
-  const ctx = c.getContext("2d", { willReadFrequently: true });
-
-  // dHash: 9x8 grayscale compare horizontally => 64 bits
-  const W = 9, H = 8;
-  c.width = W; c.height = H;
-  ctx.drawImage(img, 0, 0, W, H);
-  const id = ctx.getImageData(0,0,W,H).data;
-
-  const gray = [];
-  for(let i=0;i<id.length;i+=4){
-    const lum = id[i]*0.2126 + id[i+1]*0.7152 + id[i+2]*0.0722;
-    gray.push(lum);
-  }
-  let bits = "";
-  for(let y=0;y<H;y++){
-    for(let x=0;x<8;x++){
-      const left = gray[y*W + x];
-      const right = gray[y*W + x + 1];
-      bits += (left > right) ? "1" : "0";
-    }
-  }
-  // to hex
-  let hex = "";
-  for(let i=0;i<bits.length;i+=4){
-    hex += parseInt(bits.slice(i,i+4),2).toString(16);
-  }
-  return hex; // 16 hex chars
-}
-
-/* ===========================
-   6) Firestore: store samples & stats
-   =========================== */
-async function getStatsForHash(phash){
-  if(!db) return null;
-  try{
-    const doc = await db.collection("stats").doc(phash).get();
-    return doc.exists ? doc.data() : null;
-  }catch(e){
-    console.warn("getStatsForHash failed:", e);
-    return null;
-  }
-}
-
-async function upsertStats(phash, chosenChar){
-  if(!db) return;
-  try{
-    const ref = db.collection("stats").doc(phash);
-    await db.runTransaction(async (tx)=>{
-      const snap = await tx.get(ref);
-      const data = snap.exists ? snap.data() : { counts: {}, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
-      data.counts = data.counts || {};
-      data.counts[chosenChar] = (data.counts[chosenChar] || 0) + 1;
-      data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
-      tx.set(ref, data, { merge: true });
-    });
-  }catch(e){
-    console.warn("upsertStats failed:", e);
-  }
-}
-
-async function logSample(payload){
-  if(!db) return;
-  try{
-    await db.collection("samples").add({
-      ...payload,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      userAgent: navigator.userAgent
-    });
-  }catch(e){
-    console.warn("logSample failed:", e);
-  }
-}
-
-/* ===========================
-   7) OCR logic: multi-language + merge + 10 unique candidates
-   =========================== */
-let lastPreprocessedDataURL = null;
-let lastPhash = null;
-let lastOCRRaw = null;
-let lastCandidates = [];
-
-async function runOCR(preprocessedDataURL){
-  if(!window.Tesseract) throw new Error("Tesseract.js not loaded");
-
-  // Try multiple languages and merge results
-  const langs = ["chi_tra", "chi_sim", "jpn"];
-  const allText = [];
-  const allConf = [];
-
-  for(const lang of langs){
-    setStatus("正在辨識中…", `OCR 語言：${lang}（會合併候選）`);
-    const worker = await Tesseract.createWorker(lang);
-    try{
-      // Some tuning
-      await worker.setParameters({
-        tessedit_pageseg_mode: "10", // treat as single char where possible
-        preserve_interword_spaces: "1",
-      });
-
-      const { data } = await worker.recognize(preprocessedDataURL);
-      if(data && data.text){
-        allText.push(data.text);
+    async function initFirebaseIfPossible() {
+      firebaseReady = false;
+      addFeedback = null;
+      const cfg = settings.fbConfig;
+      if (!cfg?.apiKey || !cfg?.projectId) {
+        fbStatus.textContent = "未啟用";
+        fbDetail.textContent = "（可在「設定」中貼上 Firebase config）";
+        return;
       }
-      // Pull symbol-level candidates if available
-      if(data && data.symbols && data.symbols.length){
-        for(const s of data.symbols){
-          if(s.text) allConf.push({ ch: s.text, conf: s.confidence || 0 });
-          if(s.choices && s.choices.length){
-            for(const c of s.choices){
-              if(c.text) allConf.push({ ch: c.text, conf: c.confidence || 0 });
-            }
-          }
+
+      try {
+        const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js");
+        const { getFirestore, collection, addDoc, serverTimestamp } =
+          await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js");
+
+        const app = initializeApp(cfg);
+        const db = getFirestore(app);
+        const col = collection(db, "ocr_feedback");
+
+        addFeedback = async (payload) => {
+          await addDoc(col, { ...payload, createdAt: serverTimestamp() });
+        };
+
+        firebaseReady = true;
+        fbStatus.textContent = "已啟用";
+        fbDetail.textContent = "（回饋會寫入 Firestore：ocr_feedback）";
+      } catch (e) {
+        console.error(e);
+        fbStatus.textContent = "初始化失敗";
+        fbDetail.textContent = (e?.message || "").slice(0, 120);
+      }
+    }
+    await initFirebaseIfPossible();
+
+    // ======= UI actions =======
+    $("#btnSettings").addEventListener("click", () => {
+      $("#settingsCard").style.display = "block";
+      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+    });
+    $("#btnCloseSettings").addEventListener("click", () => {
+      $("#settingsCard").style.display = "none";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    $("#btnSaveSettings").addEventListener("click", async () => {
+      const hfEndpoint = $("#hfEndpoint").value.trim();
+      const hfToken = $("#hfToken").value.trim();
+      const fontList = $("#fontList").value.split("\n").map(s => s.trim()).filter(Boolean);
+
+      let fbConfigRaw = $("#fbConfig").value.trim();
+      let fbConfig = null;
+      if (fbConfigRaw) {
+        try { fbConfig = JSON.parse(fbConfigRaw); }
+        catch (e) {
+          alert("Firebase config JSON 解析失敗，請確認格式正確。");
+          return;
         }
       }
-    } finally {
-      await worker.terminate();
-    }
-  }
 
-  // 1) from symbol candidates (rank by confidence)
-  const confChars = allConf
-    .map(x => ({ ch: (x.ch || "").trim(), conf: x.conf }))
-    .filter(x => x.ch && !/\s/.test(x.ch))
-    .map(x => ({ ch: normalizeCharCandidates(x.ch)[0] || x.ch[0], conf: x.conf }))
-    .filter(x => x.ch);
+      saveSettings({
+        hfEndpoint,
+        hfToken,
+        fontList,
+        fbConfig,
+        fbConfigRaw
+      });
 
-  // sort by conf desc
-  confChars.sort((a,b)=>b.conf - a.conf);
+      await initFirebaseIfPossible();
 
-  // 2) from raw texts
-  const rawChars = uniqueCharsKeepOrder(
-    allText.flatMap(t => normalizeCharCandidates(t))
-  );
-
-  // Merge into one list
-  const merged = [];
-  const seen = new Set();
-
-  for(const item of confChars){
-    if(!seen.has(item.ch)){
-      seen.add(item.ch);
-      merged.push(item.ch);
-    }
-    if(merged.length >= 25) break;
-  }
-  for(const ch of rawChars){
-    if(!seen.has(ch)){
-      seen.add(ch);
-      merged.push(ch);
-    }
-    if(merged.length >= 25) break;
-  }
-
-  // Ensure we return 10 unique candidates.
-  const top10 = merged.slice(0,10);
-
-  return {
-    langsTried: langs,
-    texts: allText,
-    top10,
-    merged25: merged.slice(0,25)
-  };
-}
-
-/* ===========================
-   8) Render candidates + multi-font display + copy
-   =========================== */
-function codepointInfo(ch){
-  const cp = ch.codePointAt(0);
-  const hex = cp.toString(16).toUpperCase();
-  const u = "U+" + hex.padStart(4,"0");
-  return { cp, hex, u };
-}
-
-function renderCandidates(chars){
-  const box = el("candidates");
-  box.innerHTML = "";
-  if(!chars || !chars.length){
-    el("resultsInfo").textContent = "沒有候選結果。試著換更清楚的圖片或裁切成只剩一個字。";
-    el("feedbackBox").style.display = "none";
-    return;
-  }
-
-  el("resultsInfo").textContent = `已產生 ${chars.length} 個候選字（點字可複製）。`;
-
-  for(const ch of chars){
-    const { u } = codepointInfo(ch);
-
-    const card = document.createElement("div");
-    card.className = "cand";
-
-    const top = document.createElement("div");
-    top.className = "candTop";
-
-    const big = document.createElement("div");
-    big.className = "bigChar";
-    big.textContent = ch;
-    big.title = "點一下複製";
-    big.addEventListener("click", async ()=>{
-      await navigator.clipboard.writeText(ch);
-      toast(`已複製：${ch} (${u})`);
+      // rerender if we already have candidates
+      if (lastCandidates.length) renderCandidates(lastCandidates);
+      alert("設定已儲存 ✅");
     });
 
-    const meta = document.createElement("div");
-    meta.className = "meta";
-    meta.innerHTML = `<div>${u}</div><div class="tag">候選字</div>`;
+    $("#btnResetSettings").addEventListener("click", async () => {
+      if (!confirm("要重置設定嗎？")) return;
+      localStorage.removeItem("ufc_settings_v1");
+      Object.assign(settings, loadSettings(true));
+      $("#hfEndpoint").value = settings.hfEndpoint || "";
+      $("#hfToken").value = settings.hfToken || "";
+      $("#fontList").value = (settings.fontList?.length ? settings.fontList : DEFAULT_FONTS).join("\n");
+      $("#fbConfig").value = settings.fbConfigRaw || "";
+      await initFirebaseIfPossible();
+      if (lastCandidates.length) renderCandidates(lastCandidates);
+      alert("已重置 ✅");
+    });
 
-    top.appendChild(big);
-    top.appendChild(meta);
+    $("#btnCopyRaw").addEventListener("click", async () => {
+      const t = rawText.value || "";
+      if (!t.trim()) return alert("目前沒有 OCR 文字可複製。");
+      await navigator.clipboard.writeText(t);
+      alert("已複製 OCR 文字 ✅");
+    });
 
-    const fonts = document.createElement("div");
-    fonts.className = "fonts";
+    $("#btnClear").addEventListener("click", () => {
+      rawText.value = "";
+      $("#manualInput").value = "";
+      setStatus("已清空", "");
+      currentImageBlob = null;
+      currentImageDataUrl = null;
+      preview.innerHTML = `<span class="help">尚未上傳</span>`;
+      renderCandidates([]);
+    });
 
-    for(const f of FONT_STACKS){
-      const line = document.createElement("div");
-      line.className = "fontLine";
+    $("#btnManual").addEventListener("click", async () => {
+      const v = $("#manualInput").value.trim();
+      if (!v) return alert("請先貼上一個字，或輸入 U+XXXX / 26D3F");
+      const char = parseManualToChar(v);
+      if (!char) return alert("解析失敗：請輸入單一字，或 U+XXXX / 十六進位碼位（例如 26D3F）");
 
-      const name = document.createElement("div");
-      name.className = "fontName";
-      name.textContent = f.name;
+      // Produce candidates: char + some variants from rawText if any
+      const raw = rawText.value || "";
+      const fromRaw = extractCandidateChars(raw, 10);
+      const merged = uniq([char, ...fromRaw]).slice(0, 10);
 
-      const sample = document.createElement("div");
-      sample.className = "sample";
-      sample.style.fontFamily = f.css;
-      sample.textContent = ch;
+      setStatus("已從手動輸入產生候選", `字：${char}（${toCodepoint(char)}）`);
+      renderCandidates(merged);
+    });
 
-      // best-effort rendered tag
-      let ok = false;
-      try{ ok = glyphLikelyRendered(ch, f.css); }catch(e){ ok = false; }
-      const tag = document.createElement("span");
-      tag.className = "tag";
-      tag.textContent = ok ? "可能可顯示" : "可能不支援";
+    $("#btnRerun").addEventListener("click", async () => {
+      if (!currentImageBlob) return alert("請先上傳圖片。");
+      await runOcrOnCurrentImage();
+    });
 
-      const right = document.createElement("div");
-      right.style.display = "flex";
-      right.style.gap = "8px";
-      right.style.alignItems = "center";
-      right.appendChild(sample);
-      right.appendChild(tag);
+    // Drag & drop
+    const dropZone = $("#dropZone");
+    dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.style.opacity = "0.92"; });
+    dropZone.addEventListener("dragleave", () => { dropZone.style.opacity = "1"; });
+    dropZone.addEventListener("drop", async (e) => {
+      e.preventDefault();
+      dropZone.style.opacity = "1";
+      const file = e.dataTransfer.files?.[0];
+      if (file) await handleFile(file);
+    });
 
-      line.appendChild(name);
-      line.appendChild(right);
-      fonts.appendChild(line);
+    $("#fileInput").addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (file) await handleFile(file);
+    });
+
+    async function handleFile(file) {
+      if (!file.type.startsWith("image/")) return alert("請上傳圖片檔。");
+      currentImageBlob = file;
+      currentImageDataUrl = await blobToDataURL(file);
+      preview.innerHTML = "";
+      const img = document.createElement("img");
+      img.src = currentImageDataUrl;
+      preview.appendChild(img);
+
+      setStatus("已上傳圖片", `${file.name} · ${(file.size/1024).toFixed(1)} KB`);
+      await runOcrOnCurrentImage();
     }
 
-    card.appendChild(top);
-    card.appendChild(fonts);
-    box.appendChild(card);
-  }
+    // ======= OCR via Hugging Face Endpoint =======
+    async function runOcrOnCurrentImage() {
+      const endpoint = (settings.hfEndpoint || "").trim();
+      if (!endpoint) {
+        setStatus("缺少 Endpoint", "請到「設定」填入 Hugging Face Inference Endpoint URL");
+        alert("請先在「設定」填入 Hugging Face Inference Endpoint URL。");
+        return;
+      }
 
-  renderFeedbackChoices(chars);
-}
+      try {
+        setStatus("OCR 辨識中…", "正在呼叫 Endpoint");
+        rawText.value = "";
 
-function renderFeedbackChoices(chars){
-  const fb = el("feedbackBox");
-  const grid = el("fbChoices");
-  grid.innerHTML = "";
-  fb.style.display = "grid";
+        const token = (settings.hfToken || "").trim();
+        const imgB64 = (await blobToDataURL(currentImageBlob)).split(",")[1];
 
-  for(const ch of chars){
-    const { u } = codepointInfo(ch);
-    const item = document.createElement("div");
-    item.className = "choice";
-    item.innerHTML = `<div class="ch">${ch}</div><div><div class="small">${u}</div><div class="small">點我：這個最接近</div></div>`;
-    item.addEventListener("click", ()=>submitFeedback(ch, "pick"));
-    grid.appendChild(item);
-  }
+        // 這裡用「最通用」的方式：送 base64 image，body 格式可能要依你部署的 handler 調整
+        // 如果你的 Endpoint 是自訂 container / OpenAI-compatible，需要你改 payload。
+        const payload = {
+          inputs: {
+            image: imgB64
+          }
+        };
 
-  // "None of above"
-  const none = document.createElement("div");
-  none.className = "choice";
-  none.innerHTML = `<div class="ch">✖</div><div><div class="small">以上都不是</div><div class="small">用下方輸入正解</div></div>`;
-  none.addEventListener("click", ()=>{
-    el("fbCustom").focus();
-  });
-  grid.appendChild(none);
-}
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { "Authorization": `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify(payload)
+        });
 
-/* ===========================
-   9) Feedback -> Firestore + re-rank stats
-   =========================== */
-async function submitFeedback(chosenChar, mode){
-  const payload = {
-    mode,
-    chosenChar,
-    phash: lastPhash || null,
-    ocrRaw: lastOCRRaw || null,
-    candidates: lastCandidates || null,
-    page: location.href,
-  };
+        if (!res.ok) {
+          const txt = await res.text().catch(() => "");
+          throw new Error(`Endpoint 回應失敗：${res.status} ${res.statusText}\n${txt.slice(0, 500)}`);
+        }
 
-  await logSample(payload);
-  if(lastPhash) await upsertStats(lastPhash, chosenChar);
+        // 不同 Endpoint 可能回不同格式：我們做容錯
+        const data = await res.json().catch(async () => ({ raw: await res.text() }));
+        const ocr = normalizeOcrOutput(data);
 
-  toast(`已回饋：${chosenChar}`);
-  // show chosen char as "manual" display too (nice UX)
-  el("manualChar").value = chosenChar;
-  el("manualCode").value = "";
-  renderCandidates([chosenChar, ...lastCandidates.filter(c=>c!==chosenChar)].slice(0,10));
-}
+        rawText.value = ocr.text || "";
+        setStatus("OCR 完成 ✅", ocr.brief);
 
-function parseManualInputToChar(){
-  const rawChar = (el("manualChar").value || "").trim();
-  if(rawChar){
-    // take first code point
-    const cp = rawChar.codePointAt(0);
-    return String.fromCodePoint(cp);
-  }
-  const rawCode = (el("manualCode").value || "").trim();
-  if(!rawCode) return null;
+        // 抽 10 個「不同的字」
+        let candidates = extractCandidateChars(ocr.text || "", 10);
 
-  let hex = rawCode.toUpperCase();
-  hex = hex.replace(/^U\+/, "").replace(/^0X/, "");
-  if(!/^[0-9A-F]+$/.test(hex)) return null;
+        // Learning-lite: 若同張圖片之前有人選過正解，就把正解塞進第一個
+        const learned = getLocalLearnedForCurrentImage();
+        if (learned) candidates = uniq([learned, ...candidates]).slice(0, 10);
 
-  const cp = parseInt(hex, 16);
-  if(!Number.isFinite(cp) || cp <= 0 || cp > 0x10FFFF) return null;
-  return String.fromCodePoint(cp);
-}
+        // 如果 OCR 給不出 10 個字：用整段文字拆，至少補到 10（可能會包含符號）
+        if (candidates.length < 10 && (ocr.text || "").length) {
+          candidates = uniq([...candidates, ...Array.from(ocr.text)]).filter(isProbablyUsefulChar).slice(0, 10);
+        }
 
-/* ===========================
-   10) Main flows
-   =========================== */
-let currentImageURL = null;
+        renderCandidates(candidates);
 
-async function handleFile(file){
-  if(!file) return;
-  if(currentImageURL) URL.revokeObjectURL(currentImageURL);
-  currentImageURL = URL.createObjectURL(file);
-  const img = el("previewImg");
-  img.src = currentImageURL;
-  img.style.display = "block";
-  await img.decode();
-
-  el("btnRecognize").disabled = false;
-  el("btnRetry").disabled = false;
-  setStatus("已上傳圖片", "按「開始辨識」來做 OCR。建議先裁切到只剩單一字，準確率會顯著提升。");
-}
-
-async function recognizeFromPreview(){
-  const img = el("previewImg");
-  if(!img.src) return;
-
-  el("btnRecognize").disabled = true;
-  el("btnRetry").disabled = true;
-  setStatus("準備中…", "正在做影像前處理（黑白化 / 提升對比）");
-
-  const pre = await preprocessImageToDataURL(img);
-  lastPreprocessedDataURL = pre;
-
-  setStatus("準備中…", "正在建立圖片指紋（越用越準會用到）");
-  lastPhash = await dhashFromImageDataURL(pre);
-
-  // Try to pull stats to re-rank later
-  let stats = await getStatsForHash(lastPhash);
-
-  setStatus("OCR 進行中…", "會依序嘗試 chi_tra / chi_sim / jpn，並合併候選。");
-  let ocrRes;
-  try{
-    ocrRes = await runOCR(pre);
-  }catch(e){
-    console.error(e);
-    setStatus("辨識失敗", "OCR 載入或執行失敗。請確認網路可載入 Tesseract.js，或換張更清楚的圖。");
-    el("btnRecognize").disabled = false;
-    el("btnRetry").disabled = false;
-    return;
-  }
-
-  lastOCRRaw = ocrRes;
-  // Ensure 10 candidates (unique)
-  let cand = uniqueCharsKeepOrder(ocrRes.top10).slice(0,10);
-
-  // If stats exist: reorder by learned counts
-  if(stats && stats.counts){
-    const counts = stats.counts;
-    cand.sort((a,b)=>(counts[b]||0)-(counts[a]||0));
-  }
-
-  // If less than 10, pad with merged25 unique
-  if(cand.length < 10){
-    const more = uniqueCharsKeepOrder(ocrRes.merged25);
-    for(const ch of more){
-      if(!cand.includes(ch)){
-        cand.push(ch);
-        if(cand.length >= 10) break;
+      } catch (e) {
+        console.error(e);
+        setStatus("OCR 失敗 ❌", (e?.message || "").slice(0, 120));
+        alert(e?.message || "OCR 失敗");
       }
     }
-  }
 
-  lastCandidates = cand;
+    function normalizeOcrOutput(data) {
+      // 常見情況：data 是 string、或 {text:"..."}, 或 [{generated_text:"..."}] 等
+      let text = "";
+      if (typeof data === "string") text = data;
+      else if (data?.text) text = data.text;
+      else if (Array.isArray(data) && data[0]?.generated_text) text = data[0].generated_text;
+      else if (data?.generated_text) text = data.generated_text;
+      else if (data?.raw && typeof data.raw === "string") text = data.raw;
+      else text = JSON.stringify(data);
 
-  // Log sample (auto) for later analysis
-  await logSample({
-    mode: "ocr",
-    phash: lastPhash,
-    ocrRaw: lastOCRRaw,
-    candidates: lastCandidates,
-    page: location.href,
-  });
-
-  setStatus("完成 ✅", `已產生候選字。圖片指紋：${lastPhash}`);
-  renderCandidates(lastCandidates);
-
-  el("btnRecognize").disabled = false;
-  el("btnRetry").disabled = false;
-}
-
-async function retryOCR(){
-  // same as recognize, but doesn't require re-upload
-  await recognizeFromPreview();
-}
-
-/* ===========================
-   11) Boot
-   =========================== */
-window.addEventListener("DOMContentLoaded", ()=>{
-  initFirebase();
-
-  el("fileInput").addEventListener("change", (e)=>{
-    const file = e.target.files && e.target.files[0];
-    handleFile(file);
-  });
-
-  el("btnRecognize").addEventListener("click", recognizeFromPreview);
-  el("btnRetry").addEventListener("click", retryOCR);
-
-  el("btnManualShow").addEventListener("click", ()=>{
-    const ch = parseManualInputToChar();
-    if(!ch){
-      toast("請先貼上字，或輸入 U+XXXX");
-      return;
-    }
-    const chars = [ch];
-    lastCandidates = chars;
-    renderCandidates(chars);
-    setStatus("手動模式 ✅", "已顯示你輸入的字（點字即可複製）。");
-  });
-
-  el("btnClear").addEventListener("click", ()=>{
-    el("manualChar").value = "";
-    el("manualCode").value = "";
-    el("previewImg").src = "";
-    el("previewImg").style.display = "none";
-    el("candidates").innerHTML = "";
-    el("resultsInfo").textContent = "尚無結果。上傳圖片或手動輸入後，會在這裡出現候選字卡片。";
-    el("feedbackBox").style.display = "none";
-    el("btnRecognize").disabled = true;
-    el("btnRetry").disabled = true;
-    setStatus("尚未上傳圖片", "上傳後按「開始辨識」，會產生 10 個不同候選字。");
-  });
-
-  el("btnSubmitCustom").addEventListener("click", async ()=>{
-    const raw = (el("fbCustom").value || "").trim();
-    if(!raw){
-      toast("請輸入正確字或 U+XXXX");
-      return;
+      text = (text || "").replace(/\u0000/g, "").trim();
+      return {
+        text,
+        brief: text ? `輸出長度 ${text.length}` : "（空輸出）"
+      };
     }
 
-    // parse as char or codepoint
-    let chosen = null;
-    if(/^U\+|^0x|^[0-9a-fA-F]+$/.test(raw)){
-      // maybe code
-      el("manualChar").value = "";
-      el("manualCode").value = raw;
-      chosen = parseManualInputToChar();
-    }else{
-      chosen = raw.codePointAt(0) ? String.fromCodePoint(raw.codePointAt(0)) : null;
+    // ======= Candidate extraction =======
+    function extractCandidateChars(text, limit=10) {
+      if (!text) return [];
+      // 只取「看起來像單字」的候選：CJK + Extension + 部分符號
+      const chars = Array.from(text)
+        .map(ch => ch.trim() ? ch : "")
+        .filter(Boolean)
+        .filter(isProbablyUsefulChar);
+
+      // 去重 + 取前 N
+      return uniq(chars).slice(0, limit);
     }
 
-    if(!chosen){
-      toast("格式不正確。請輸入字，或 U+XXXX / 4E00 / 0x4E00");
-      return;
+    function isProbablyUsefulChar(ch) {
+      const cp = ch.codePointAt(0);
+      // 排除常見空白控制
+      if (cp <= 0x20) return false;
+
+      // CJK Unified + Extensions (大致範圍)
+      const isCJK =
+        (cp >= 0x4E00 && cp <= 0x9FFF) ||         // 基本
+        (cp >= 0x3400 && cp <= 0x4DBF) ||         // Ext A
+        (cp >= 0x20000 && cp <= 0x2EBEF) ||       // Ext B-G (大概到 Ext F/G 區域)
+        (cp >= 0x2F800 && cp <= 0x2FA1F);         // CJK Compatibility Ideographs Supplement
+
+      // 也允許少量常用符號（OCR 可能會吐）
+      const isCommonPunct =
+        (cp >= 0x3000 && cp <= 0x303F) ||         // CJK punctuation
+        (cp >= 0xFF00 && cp <= 0xFFEF);           // Fullwidth forms
+
+      return isCJK || isCommonPunct;
     }
 
-    await submitFeedback(chosen, "custom");
-    el("fbCustom").value = "";
-  });
-});
-</script>
+    function uniq(arr) {
+      const s = new Set();
+      const out = [];
+      for (const x of arr) {
+        if (!s.has(x)) { s.add(x); out.push(x); }
+      }
+      return out;
+    }
 
+    // ======= Render =======
+    function renderCandidates(candidates) {
+      lastCandidates = candidates || [];
+      candCountPill.textContent = `候選：${lastCandidates.length}`;
+      candGrid.innerHTML = "";
+
+      if (!lastCandidates.length) {
+        candGrid.innerHTML = `<div class="help">尚無候選字。請上傳圖片或貼上 Unicode/文字。</div>`;
+        return;
+      }
+
+      const fonts = (settings.fontList?.length ? settings.fontList : DEFAULT_FONTS);
+
+      for (const ch of lastCandidates) {
+        const card = document.createElement("div");
+        card.className = "cand";
+
+        const top = document.createElement("div");
+        top.className = "candTop";
+
+        const big = document.createElement("div");
+        big.className = "bigChar";
+        big.textContent = ch;
+
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        const cp = toCodepoint(ch);
+
+        meta.innerHTML = `
+          <div class="cp mono">${cp}</div>
+          <div class="blk">區段：<b>${guessBlockName(ch)}</b></div>
+          <div class="help" style="margin-top:4px;">點「複製」貼到 Word / 文件，再選擇合適字型。</div>
+        `;
+
+        const actions = document.createElement("div");
+        actions.className = "actions";
+
+        const btnCopy = document.createElement("button");
+        btnCopy.className = "mini primary";
+        btnCopy.textContent = "複製";
+        btnCopy.addEventListener("click", async () => {
+          await navigator.clipboard.writeText(ch);
+          alert(`已複製：${ch}（${cp}）`);
+        });
+
+        const btnCorrect = document.createElement("button");
+        btnCorrect.className = "mini";
+        btnCorrect.textContent = "設為正解";
+        btnCorrect.addEventListener("click", async () => {
+          lastChosen = ch;
+          // local learn: exact image hash mapping
+          if (currentImageBlob) {
+            const h = await sha256OfImage(currentImageBlob);
+            localStorage.setItem(`ufc_learn_${h}`, ch);
+          }
+
+          // optional: send to Firestore
+          if (firebaseReady && addFeedback) {
+            try {
+              const imgHash = currentImageBlob ? await sha256OfImage(currentImageBlob) : null;
+              await addFeedback({
+                chosenChar: ch,
+                chosenCodepoint: cp,
+                ocrRaw: rawText.value || "",
+                imageHash: imgHash,
+                endpoint: (settings.hfEndpoint || "").slice(0, 120),
+                userAgent: navigator.userAgent,
+                tz: Intl.DateTimeFormat().resolvedOptions().timeZone
+              });
+            } catch (e) {
+              console.error(e);
+              alert("回饋寫入失敗（Firebase）：" + (e?.message || ""));
+              return;
+            }
+          }
+
+          alert(`已設定正解：${ch} ✅\n（已本機學習${firebaseReady ? " + Firebase 回饋" : ""}）`);
+        });
+
+        top.appendChild(big);
+        top.appendChild(meta);
+        actions.appendChild(btnCopy);
+        actions.appendChild(btnCorrect);
+        top.appendChild(actions);
+
+        const fontsBox = document.createElement("div");
+        fontsBox.className = "fontsBox";
+        fontsBox.innerHTML = `
+          <div class="fh">
+            <span>多字型顯示（同一候選字）</span>
+            <span class="help">✅=此字型可能有字形</span>
+          </div>
+          <div class="fonts"></div>
+        `;
+        const fontsWrap = fontsBox.querySelector(".fonts");
+
+        for (const f of fonts) {
+          const row = document.createElement("div");
+          row.className = "fontRow";
+
+          const name = document.createElement("div");
+          name.className = "fontName";
+          name.textContent = f;
+
+          const show = document.createElement("div");
+          show.className = "fontShow";
+          show.style.fontFamily = `"${f}", "Noto Sans CJK TC", "PingFang TC", system-ui, sans-serif`;
+          show.textContent = ch;
+
+          // Heuristic: use document.fonts.check if available
+          const ok = fontLikelySupportsChar(f, ch);
+          const badge = document.createElement("span");
+          badge.className = ok ? "okBadge" : "noBadge";
+          badge.textContent = ok ? "可能支援" : "未知/可能不支援";
+
+          row.appendChild(name);
+          row.appendChild(show);
+          row.appendChild(badge);
+          fontsWrap.appendChild(row);
+        }
+
+        card.appendChild(top);
+        card.appendChild(fontsBox);
+        candGrid.appendChild(card);
+      }
+    }
+
+    function fontLikelySupportsChar(fontName, ch) {
+      // 這不是 100% 準確（瀏覽器限制），但可做「大致」提示。
+      // document.fonts.check 只能檢查字型是否可用+渲染，不保證 glyph 存在；但比完全沒有好。
+      try {
+        if (!document.fonts || !document.fonts.check) return false;
+        const ok = document.fonts.check(`16px "${fontName}"`, ch);
+        return !!ok;
+      } catch {
+        return false;
+      }
+    }
+
+    function toCodepoint(ch) {
+      const cp = ch.codePointAt(0);
+      return "U+" + cp.toString(16).toUpperCase().padStart(cp > 0xFFFF ? 5 : 4, "0");
+    }
+
+    function guessBlockName(ch){
+      const cp = ch.codePointAt(0);
+      if (cp >= 0x4E00 && cp <= 0x9FFF) return "CJK Unified Ideographs";
+      if (cp >= 0x3400 && cp <= 0x4DBF) return "CJK Ext A";
+      if (cp >= 0x20000 && cp <= 0x2A6DF) return "CJK Ext B";
+      if (cp >= 0x2A700 && cp <= 0x2B73F) return "CJK Ext C";
+      if (cp >= 0x2B740 && cp <= 0x2B81F) return "CJK Ext D";
+      if (cp >= 0x2B820 && cp <= 0x2CEAF) return "CJK Ext E";
+      if (cp >= 0x2CEB0 && cp <= 0x2EBEF) return "CJK Ext F/G";
+      if (cp >= 0x2F800 && cp <= 0x2FA1F) return "CJK Compatibility Supplement";
+      if (cp >= 0xE000 && cp <= 0xF8FF) return "PUA (Private Use Area)";
+      return "Other / Unknown";
+    }
+
+    // ======= Manual parse =======
+    function parseManualToChar(v) {
+      // If user pasted a character
+      if (Array.from(v).length === 1) return Array.from(v)[0];
+
+      // If "U+XXXX"
+      const m1 = v.match(/^U\+([0-9a-fA-F]{4,6})$/);
+      const m2 = v.match(/^([0-9a-fA-F]{4,6})$/);
+      const hex = (m1?.[1] || m2?.[1])?.toUpperCase();
+      if (!hex) return null;
+
+      const cp = parseInt(hex, 16);
+      if (!Number.isFinite(cp) || cp <= 0) return null;
+
+      try { return String.fromCodePoint(cp); }
+      catch { return null; }
+    }
+
+    // ======= Status =======
+    function setStatus(main, sub="") {
+      statusText.textContent = main;
+      statusSub.textContent = sub ? ` · ${sub}` : "";
+    }
+
+    // ======= Storage: settings =======
+    function loadSettings(forceDefault=false) {
+      if (forceDefault) {
+        return {
+          hfEndpoint: "",
+          hfToken: "",
+          fontList: DEFAULT_FONTS,
+          fbConfig: null,
+          fbConfigRaw: ""
+        };
+      }
+      try {
+        const raw = localStorage.getItem("ufc_settings_v1");
+        if (!raw) return loadSettings(true);
+        const s = JSON.parse(raw);
+        return {
+          hfEndpoint: s.hfEndpoint || "",
+          hfToken: s.hfToken || "",
+          fontList: Array.isArray(s.fontList) && s.fontList.length ? s.fontList : DEFAULT_FONTS,
+          fbConfig: s.fbConfig || null,
+          fbConfigRaw: s.fbConfigRaw || ""
+        };
+      } catch {
+        return loadSettings(true);
+      }
+    }
+    function saveSettings(next) {
+      settings.hfEndpoint = next.hfEndpoint || "";
+      settings.hfToken = next.hfToken || "";
+      settings.fontList = next.fontList?.length ? next.fontList : DEFAULT_FONTS;
+      settings.fbConfig = next.fbConfig || null;
+      settings.fbConfigRaw = next.fbConfigRaw || "";
+      localStorage.setItem("ufc_settings_v1", JSON.stringify(settings));
+    }
+
+    // ======= Image helpers =======
+    function blobToDataURL(blob) {
+      return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = reject;
+        r.readAsDataURL(blob);
+      });
+    }
+
+    async function sha256OfImage(blob) {
+      const arr = new Uint8Array(await blob.arrayBuffer());
+      const hashBuf = await crypto.subtle.digest("SHA-256", arr);
+      const hashArr = Array.from(new Uint8Array(hashBuf));
+      return hashArr.map(b => b.toString(16).padStart(2,"0")).join("");
+    }
+
+    function getLocalLearnedForCurrentImage() {
+      // exact match learning: 同張圖片（同 hash）就直接給正解
+      // 這不是「自動改進模型」，但能做到：同樣輸入越多次越準、且不需人工測試跑資料庫
+      // 進階要做「相似圖片」需 pHash/embedding + 後端近鄰搜尋，下一步再上。
+      return null; // OCR 前我們還不知道 hash；在 runOcr 中會把 learned 加進候選
+    }
+
+    // ======= On load =======
+    setStatus("等待上傳圖片", "");
+    renderCandidates([]);
+  </script>
 </body>
 </html>
-
